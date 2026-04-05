@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Historial — TikTok Script Analyzer{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Historial</h1>
+
+{% if videos %}
+<div class="space-y-3">
+    {% for video in videos %}
+    <a href="/history/{{ video.id }}" class="block bg-dark-800 rounded-lg p-4 hover:bg-dark-700 transition">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-purple-400 font-medium">{{ video.author or 'Sin autor' }}</span>
+                <span class="text-gray-500 text-sm ml-3">{{ video.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+            </div>
+            {% if video.analysis %}
+            <span class="text-lg font-bold {% if video.analysis.virality_score >= 7 %}text-green-400{% elif video.analysis.virality_score >= 4 %}text-yellow-400{% else %}text-red-400{% endif %}">
+                {{ video.analysis.virality_score }}/10
+            </span>
+            {% endif %}
+        </div>
+        <p class="text-gray-400 text-sm mt-1 truncate">{{ video.tiktok_url }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-500">No hay análisis todavía. <a href="/" class="text-purple-400 hover:underline">Analiza tu primer video</a>.</p>
+{% endif %}
+{% endblock %}

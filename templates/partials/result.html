@@ -1,0 +1,129 @@
+<div class="space-y-6">
+    <!-- TikTok Embed -->
+    <div class="bg-dark-800 rounded-lg p-4">
+        <blockquote class="tiktok-embed" cite="{{ video.tiktok_url }}" data-video-id="{{ video.tiktok_url.split('/')[-1] }}">
+            <a href="{{ video.tiktok_url }}">Ver en TikTok</a>
+        </blockquote>
+        <script async src="https://www.tiktok.com/embed.js"></script>
+    </div>
+
+    <!-- Transcription -->
+    <div class="bg-dark-800 rounded-lg p-6">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-purple-400">Transcripción</h2>
+            <button onclick="copyText('transcription-text')" class="text-sm text-gray-400 hover:text-white px-3 py-1 border border-gray-600 rounded">Copiar</button>
+        </div>
+        <p id="transcription-text" class="text-gray-300 whitespace-pre-wrap">{{ transcription.text }}</p>
+        <p class="text-sm text-gray-500 mt-2">Duración: {{ "%.0f"|format(transcription.duration_seconds) }}s</p>
+    </div>
+
+    <!-- Hook Analysis -->
+    <div class="bg-dark-800 rounded-lg p-6">
+        <h2 class="text-lg font-bold text-purple-400 mb-3">Hook</h2>
+        <div class="grid grid-cols-3 gap-4 mb-3">
+            <div>
+                <span class="text-sm text-gray-500">Tipo</span>
+                <p class="text-white capitalize">{{ analysis.hook_type }}</p>
+            </div>
+            <div>
+                <span class="text-sm text-gray-500">Score</span>
+                <p class="text-2xl font-bold {% if analysis.hook_score >= 7 %}text-green-400{% elif analysis.hook_score >= 4 %}text-yellow-400{% else %}text-red-400{% endif %}">{{ analysis.hook_score }}/10</p>
+            </div>
+            <div>
+                <span class="text-sm text-gray-500">Texto</span>
+                <p class="text-gray-300 italic">"{{ analysis.hook_text }}"</p>
+            </div>
+        </div>
+        {% if analysis_data and analysis_data.hook %}
+        <p class="text-gray-400 text-sm">{{ analysis_data.hook.explanation }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Virality Score -->
+    <div class="bg-dark-800 rounded-lg p-6">
+        <h2 class="text-lg font-bold text-purple-400 mb-3">Viralidad</h2>
+        <div class="flex items-center gap-4 mb-4">
+            <span class="text-4xl font-bold {% if analysis.virality_score >= 7 %}text-green-400{% elif analysis.virality_score >= 4 %}text-yellow-400{% else %}text-red-400{% endif %}">{{ analysis.virality_score }}/10</span>
+            {% if analysis_data and analysis_data.virality_score %}
+            <p class="text-gray-400">{{ analysis_data.virality_score.justification }}</p>
+            {% endif %}
+        </div>
+        {% if analysis_data and analysis_data.virality_score %}
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <h3 class="text-sm text-green-400 mb-2">Positivo</h3>
+                <ul class="text-sm text-gray-300 space-y-1">
+                    {% for f in analysis_data.virality_score.positive_factors %}
+                    <li>+ {{ f }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-sm text-red-400 mb-2">Negativo</h3>
+                <ul class="text-sm text-gray-300 space-y-1">
+                    {% for f in analysis_data.virality_score.negative_factors %}
+                    <li>- {{ f }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Structure -->
+    {% if analysis_data and analysis_data.structure %}
+    <div class="bg-dark-800 rounded-lg p-6">
+        <h2 class="text-lg font-bold text-purple-400 mb-3">Estructura</h2>
+        <p class="text-sm text-gray-500 mb-3">Ritmo: <span class="text-white">{{ analysis_data.structure.rhythm }}</span></p>
+        <div class="space-y-2">
+            {% for section in analysis_data.structure.sections %}
+            <div class="flex items-center gap-3 text-sm">
+                <span class="text-purple-300 font-mono w-16">{{ section.duration }}</span>
+                <span class="text-white font-semibold w-24">{{ section.name }}</span>
+                <span class="text-gray-400">{{ section.content }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Persuasion Elements -->
+    {% if analysis_data and analysis_data.persuasion_elements %}
+    <div class="bg-dark-800 rounded-lg p-6">
+        <h2 class="text-lg font-bold text-purple-400 mb-3">Elementos Persuasivos</h2>
+        <div class="space-y-3">
+            {% for elem in analysis_data.persuasion_elements %}
+            <div class="flex items-start gap-3 text-sm">
+                <span class="bg-purple-900 text-purple-200 px-2 py-1 rounded capitalize whitespace-nowrap">{{ elem.technique }}</span>
+                <span class="text-gray-300 flex-1">{{ elem.usage }}</span>
+                <span class="{% if elem.effectiveness == 'alta' %}text-green-400{% elif elem.effectiveness == 'media' %}text-yellow-400{% else %}text-red-400{% endif %} whitespace-nowrap">{{ elem.effectiveness }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Adapt Button -->
+    <div class="bg-dark-800 rounded-lg p-6">
+        <h2 class="text-lg font-bold text-purple-400 mb-3">Adaptar Guion</h2>
+        <form hx-post="/api/adapt/{{ analysis.id }}" hx-target="#adaptation-result" hx-swap="innerHTML"
+              hx-headers='{"Content-Type": "application/json"}'
+              hx-ext="json-enc">
+            <div class="flex gap-3">
+                <input type="text" name="product_or_topic" placeholder="Ej: Creatina Monohidrato, Psychotic..."
+                       class="flex-1 bg-dark-900 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none">
+                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium">
+                    Adaptar
+                </button>
+            </div>
+        </form>
+        <div id="adaptation-result" class="mt-4"></div>
+    </div>
+</div>
+
+<script>
+function copyText(elementId) {
+    const text = document.getElementById(elementId).innerText;
+    navigator.clipboard.writeText(text);
+}
+</script>

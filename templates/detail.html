@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ video.author or 'Video' }} — TikTok Script Analyzer{% endblock %}
+{% block content %}
+{% if video.transcription and video.analysis %}
+    {% with transcription=video.transcription, analysis=video.analysis %}
+    {% include "partials/result.html" %}
+    {% endwith %}
+
+    {% if video.analysis.adaptations %}
+    <div class="mt-6 space-y-4">
+        <h2 class="text-lg font-bold text-purple-400">Adaptaciones Guardadas</h2>
+        {% for ad in video.analysis.adaptations %}
+        <div class="bg-dark-700 rounded-lg p-4 border border-purple-800">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-bold text-purple-300">{{ ad.product_or_topic }}</h3>
+                <button onclick="copyText('saved-adapt-{{ ad.id }}')" class="text-xs text-gray-400 hover:text-white px-2 py-1 border border-gray-600 rounded">Copiar</button>
+            </div>
+            <p id="saved-adapt-{{ ad.id }}" class="text-gray-300 whitespace-pre-wrap">{{ ad.adapted_script }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% else %}
+    <p class="text-gray-500">Este video aún no ha sido analizado.</p>
+{% endif %}
+
+<script>
+function copyText(elementId) {
+    const text = document.getElementById(elementId).innerText;
+    navigator.clipboard.writeText(text);
+}
+</script>
+{% endblock %}
