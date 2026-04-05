@@ -1,5 +1,6 @@
 from app import create_app
 from config import Config
+from routes.telegram import start_telegram_bot
 
 app = create_app()
 
@@ -8,4 +9,7 @@ if __name__ == "__main__":
     print(f"TikTok Script Analyzer running at:")
     print(f"  Local:   http://127.0.0.1:5060")
     print(f"  Network: http://{local_ip}:5060")
-    app.run(host="0.0.0.0", port=5060, debug=True)
+
+    start_telegram_bot(app)
+
+    app.run(host="0.0.0.0", port=5060, debug=True, use_reloader=False)
