@@ -150,14 +150,7 @@ async function submitAdapt(e, analysisId) {
         }
 
         const data = await resp.json();
-        result.innerHTML = `
-            <div class="bg-dark-700 rounded-lg p-4 border border-purple-800">
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-sm font-bold text-purple-300">Adaptado para: ${data.product_or_topic}</h3>
-                    <button onclick="copyText('adapted-script-${data.adaptation_id}')" class="text-xs text-gray-400 hover:text-white px-2 py-1 border border-gray-600 rounded">Copiar</button>
-                </div>
-                <p id="adapted-script-${data.adaptation_id}" class="text-gray-300 whitespace-pre-wrap">${data.adapted_script}</p>
-            </div>`;
+        window.location.reload();
     } catch (err) {
         result.innerHTML = `<div class="bg-red-900/50 border border-red-500 rounded-lg p-4 text-red-300">${err.message}</div>`;
     } finally {

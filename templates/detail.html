@@ -7,18 +7,34 @@
     {% endwith %}
 
     {% if video.analysis.adaptations %}
-    <div class="mt-6 space-y-4">
-        <h2 class="text-lg font-bold text-purple-400">Adaptaciones Guardadas</h2>
-        {% for ad in video.analysis.adaptations %}
-        <div class="bg-dark-700 rounded-lg p-4 border border-purple-800">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-bold text-purple-300">{{ ad.product_or_topic }}</h3>
-                <button onclick="copyText('saved-adapt-{{ ad.id }}')" class="text-xs text-gray-400 hover:text-white px-2 py-1 border border-gray-600 rounded">Copiar</button>
-            </div>
-            <p id="saved-adapt-{{ ad.id }}" class="text-gray-300 whitespace-pre-wrap">{{ ad.adapted_script }}</p>
-        </div>
+        {% set ns = namespace(grouped={}) %}
+        {% for ad in video.analysis.adaptations | sort(attribute='product_or_topic,version_number') %}
+            {% if ad.product_or_topic not in ns.grouped %}
+                {% set _ = ns.grouped.update({ad.product_or_topic: []}) %}
+            {% endif %}
+            {% set _ = ns.grouped[ad.product_or_topic].append(ad) %}
         {% endfor %}
-    </div>
+
+        <div class="mt-6 space-y-6">
+        {% for topic, adaptations in ns.grouped.items() %}
+            {% if adaptations | length >= 5 %}
+                {% include "partials/versions_tabs.html" %}
+            {% else %}
+                {% for ad in adaptations %}
+                <div class="bg-dark-700 rounded-lg p-4 border border-purple-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-bold text-purple-300">{{ ad.product_or_topic }}</h3>
+                        <div class="flex gap-2">
+                            <button onclick="copyText('saved-adapt-{{ ad.id }}')" class="text-xs text-gray-400 hover:text-white px-2 py-1 border border-gray-600 rounded">Copiar</button>
+                            <a href="/chat/{{ ad.id }}" class="text-xs text-purple-400 hover:text-purple-300 px-2 py-1 border border-purple-600 rounded">Chat ✎</a>
+                        </div>
+                    </div>
+                    <p id="saved-adapt-{{ ad.id }}" class="text-gray-300 whitespace-pre-wrap">{{ ad.current_script or ad.adapted_script }}</p>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+        </div>
     {% endif %}
 {% else %}
     <p class="text-gray-500">Este video aún no ha sido analizado.</p>

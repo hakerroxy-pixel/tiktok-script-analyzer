@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Chat — {{ adaptation.product_or_topic }} — TikTok Script Analyzer{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold">Chat — {{ adaptation.product_or_topic }}</h1>
+    <div class="flex gap-2">
+        <button onclick="copyText('current-script')" class="text-sm text-gray-400 hover:text-white px-3 py-1 border border-gray-600 rounded">Copiar Guion</button>
+        <a href="/history/{{ adaptation.analysis.video_id }}" class="text-sm text-purple-400 hover:text-purple-300 px-3 py-1 border border-purple-600 rounded">← Volver</a>
+    </div>
+</div>
+<div class="bg-dark-800 rounded-lg p-6 mb-6">
+    <h2 class="text-sm font-bold text-purple-400 mb-2">Guion Actual</h2>
+    <p id="current-script" class="text-gray-300 whitespace-pre-wrap">{{ adaptation.current_script or adaptation.adapted_script }}</p>
+</div>
+<div id="chat-history" class="space-y-3 mb-4 max-h-96 overflow-y-auto">
+    {% for msg in messages %}
+    <div class="{% if msg.role == 'user' %}text-right{% endif %}">
+        <div class="inline-block max-w-[80%] rounded-lg p-3 text-sm {% if msg.role == 'user' %}bg-purple-900 text-purple-100{% else %}bg-dark-700 text-gray-300{% endif %}">
+            {{ msg.content }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<form onsubmit="sendChat(event)" class="flex gap-2">
+    <input type="text" id="chat-input" placeholder="Ej: Hazlo más corto, cambia el hook..."
+           class="flex-1 bg-dark-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none">
+    <button type="submit" id="chat-submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium">Enviar</button>
+</form>
+
+<script>
+function copyText(id) { navigator.clipboard.writeText(document.getElementById(id).innerText); }
+
+async function sendChat(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const btn = document.getElementById('chat-submit');
+    const history = document.getElementById('chat-history');
+    const scriptEl = document.getElementById('current-script');
+    const message = input.value.trim();
+    if (!message) return;
+    history.innerHTML += `<div class="text-right"><div class="inline-block max-w-[80%] rounded-lg p-3 text-sm bg-purple-900 text-purple-100">${message}</div></div>`;
+    input.value = '';
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+        const resp = await fetch('/api/chat/{{ adaptation.id }}', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: message})
+        });
+        if (!resp.ok) throw new Error((await resp.json()).error);
+        const data = await resp.json();
+        scriptEl.textContent = data.script;
+        history.innerHTML += `<div><div class="inline-block max-w-[80%] rounded-lg p-3 text-sm bg-dark-700 text-gray-300">Guion actualizado ✓</div></div>`;
+        history.scrollTop = history.scrollHeight;
+    } catch (err) {
+        history.innerHTML += `<div><div class="inline-block rounded-lg p-3 text-sm bg-red-900/50 text-red-300">Error: ${err.message}</div></div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enviar';
+    }
+}
+</script>
+{% endblock %}

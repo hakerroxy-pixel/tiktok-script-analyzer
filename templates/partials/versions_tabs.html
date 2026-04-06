@@ -1,0 +1,90 @@
+<div class="bg-dark-800 rounded-lg p-6">
+    <h2 class="text-lg font-bold text-purple-400 mb-4">{{ adaptations[0].product_or_topic }} — 5 Versiones</h2>
+    <div class="flex gap-1 mb-4 border-b border-gray-700">
+        {% for ad in adaptations %}
+        <button onclick="showVersion({{ ad.id }})" id="tab-{{ ad.id }}"
+                class="version-tab px-4 py-2 text-sm rounded-t {% if loop.first %}bg-purple-600 text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+            {{ ad.hook_style | replace('_', ' ') | capitalize }}
+            {% if ad.is_favorite %}<span class="text-yellow-400 ml-1">★</span>{% endif %}
+        </button>
+        {% endfor %}
+    </div>
+    {% for ad in adaptations %}
+    <div id="version-{{ ad.id }}" class="version-panel {% if not loop.first %}hidden{% endif %}">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-gray-500">Versión {{ ad.version_number }} — Hook: {{ ad.hook_style | replace('_', ' ') }}</span>
+            <div class="flex gap-2">
+                <button onclick="toggleFavorite({{ ad.id }})" id="fav-{{ ad.id }}"
+                        class="text-sm px-2 py-1 border border-gray-600 rounded {% if ad.is_favorite %}text-yellow-400{% else %}text-gray-400{% endif %} hover:text-yellow-400">
+                    {% if ad.is_favorite %}★ Favorita{% else %}☆ Favorita{% endif %}
+                </button>
+                <button onclick="copyText('script-{{ ad.id }}')"
+                        class="text-sm text-gray-400 hover:text-white px-2 py-1 border border-gray-600 rounded">Copiar</button>
+                <a href="/chat/{{ ad.id }}" class="text-sm text-purple-400 hover:text-purple-300 px-2 py-1 border border-purple-600 rounded">Chat ✎</a>
+            </div>
+        </div>
+        <p id="script-{{ ad.id }}" class="text-gray-300 whitespace-pre-wrap">{{ ad.current_script or ad.adapted_script }}</p>
+        <div class="mt-4 border-t border-gray-700 pt-4">
+            <form onsubmit="sendChatMessage(event, {{ ad.id }})" class="flex gap-2">
+                <input type="text" id="chat-input-{{ ad.id }}" placeholder="Ej: Hazlo más corto, cambia el hook..."
+                       class="flex-1 bg-dark-900 border border-gray-600 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none">
+                <button type="submit" id="chat-btn-{{ ad.id }}" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm">Enviar</button>
+            </form>
+            <div id="chat-status-{{ ad.id }}" class="mt-2 text-sm text-gray-500"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function showVersion(id) {
+    document.querySelectorAll('.version-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.version-tab').forEach(t => {
+        t.classList.remove('bg-purple-600', 'text-white');
+        t.classList.add('text-gray-400');
+    });
+    document.getElementById('version-' + id).classList.remove('hidden');
+    const tab = document.getElementById('tab-' + id);
+    tab.classList.add('bg-purple-600', 'text-white');
+    tab.classList.remove('text-gray-400');
+}
+
+async function toggleFavorite(adaptationId) {
+    const resp = await fetch(`/api/adaptation/${adaptationId}/favorite`, {method: 'POST'});
+    const data = await resp.json();
+    const btn = document.getElementById('fav-' + adaptationId);
+    btn.innerHTML = data.is_favorite ? '★ Favorita' : '☆ Favorita';
+    btn.classList.toggle('text-yellow-400', data.is_favorite);
+    btn.classList.toggle('text-gray-400', !data.is_favorite);
+}
+
+async function sendChatMessage(e, adaptationId) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input-' + adaptationId);
+    const btn = document.getElementById('chat-btn-' + adaptationId);
+    const status = document.getElementById('chat-status-' + adaptationId);
+    const scriptEl = document.getElementById('script-' + adaptationId);
+    const message = input.value.trim();
+    if (!message) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+    status.textContent = 'Refinando guion...';
+    try {
+        const resp = await fetch(`/api/chat/${adaptationId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: message})
+        });
+        if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || 'Error'); }
+        const data = await resp.json();
+        scriptEl.textContent = data.script;
+        status.textContent = 'Guion actualizado ✓';
+        input.value = '';
+    } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enviar';
+    }
+}
+</script>

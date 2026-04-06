@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Análisis Cruzado — TikTok Script Analyzer{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Análisis Cruzado</h1>
+<div class="bg-dark-800 rounded-lg p-6 mb-6">
+    <h2 class="text-lg font-bold text-purple-400 mb-4">Seleccionar Videos</h2>
+    {% if videos %}
+    <div class="mb-4">
+        <h3 class="text-sm text-gray-400 mb-2">Del historial:</h3>
+        <div class="space-y-2 max-h-60 overflow-y-auto">
+            {% for v in videos %}
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="video_ids" value="{{ v.id }}" class="video-checkbox accent-purple-600">
+                <span class="text-gray-300">{{ v.author or '?' }} — Viralidad: {{ v.analysis.virality_score if v.analysis else '?' }}/10</span>
+                <span class="text-gray-500 text-sm truncate">{{ v.tiktok_url }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    <div class="mb-4">
+        <h3 class="text-sm text-gray-400 mb-2">O pega URLs nuevas (una por línea):</h3>
+        <textarea id="new-urls" rows="3" placeholder="https://www.tiktok.com/@user/video/123&#10;https://www.tiktok.com/@user/video/456"
+                  class="w-full bg-dark-900 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-sm"></textarea>
+    </div>
+    <button onclick="runCrossAnalysis()" id="cross-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium">Analizar Patrones</button>
+</div>
+<div id="cross-loading" class="hidden text-center py-8">
+    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
+    <p class="text-gray-400">Procesando...</p>
+</div>
+<div id="cross-result"></div>
+
+<script>
+async function runCrossAnalysis() {
+    const checkboxes = document.querySelectorAll('.video-checkbox:checked');
+    const videoIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    const urlsText = document.getElementById('new-urls').value.trim();
+    const newUrls = urlsText ? urlsText.split('\n').filter(u => u.trim()) : [];
+    if (videoIds.length + newUrls.length < 2) { alert('Selecciona al menos 2 videos.'); return; }
+    const btn = document.getElementById('cross-btn');
+    const loading = document.getElementById('cross-loading');
+    const result = document.getElementById('cross-result');
+    btn.disabled = true;
+    loading.classList.remove('hidden');
+    result.innerHTML = '';
+    try {
+        const resp = await fetch('/api/cross-analyze', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({video_ids: videoIds, new_urls: newUrls})
+        });
+        if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || 'Error'); }
+        const data = await resp.json();
+        const r = data.result;
+        let html = '<div class="space-y-6">';
+        html += `<div class="bg-purple-900/30 border border-purple-600 rounded-lg p-6"><h2 class="text-lg font-bold text-purple-400 mb-3">Fórmula Ganadora</h2><p class="text-gray-200">${r.winning_formula}</p></div>`;
+        if (r.hook_patterns) {
+            html += `<div class="bg-dark-800 rounded-lg p-6"><h2 class="text-lg font-bold text-purple-400 mb-3">Patrones de Hook</h2><p class="text-gray-300">Más usado: <span class="text-white font-bold">${r.hook_patterns.most_used}</span></p><p class="text-gray-300">Mejor score: <span class="text-white font-bold">${r.hook_patterns.best_scoring}</span></p></div>`;
+        }
+        if (r.structure_patterns) {
+            html += `<div class="bg-dark-800 rounded-lg p-6"><h2 class="text-lg font-bold text-purple-400 mb-3">Estructura Común</h2><p class="text-gray-300">Duración promedio: ${r.structure_patterns.avg_total_duration}</p><p class="text-gray-300">Ritmo: ${r.structure_patterns.common_rhythm}</p></div>`;
+        }
+        if (r.common_themes) {
+            html += `<div class="bg-dark-800 rounded-lg p-6"><h2 class="text-lg font-bold text-purple-400 mb-3">Temas Comunes</h2><div class="flex flex-wrap gap-2">${r.common_themes.map(t => `<span class="bg-purple-900 text-purple-200 px-3 py-1 rounded-full text-sm">${t}</span>`).join('')}</div></div>`;
+        }
+        if (r.persuasion_patterns) {
+            html += `<div class="bg-dark-800 rounded-lg p-6"><h2 class="text-lg font-bold text-purple-400 mb-3">Técnicas Persuasivas</h2><div class="space-y-2">${r.persuasion_patterns.map(p => `<div class="flex items-center gap-3 text-sm"><span class="bg-purple-900 text-purple-200 px-2 py-1 rounded capitalize">${p.technique}</span><span class="text-gray-400">Frecuencia: ${p.frequency}</span><span class="text-gray-400">Efectividad: ${p.avg_effectiveness}</span></div>`).join('')}</div></div>`;
+        }
+        html += '</div>';
+        result.innerHTML = html;
+    } catch (err) {
+        result.innerHTML = `<div class="bg-red-900/50 border border-red-500 rounded-lg p-4 text-red-300">${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        loading.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}
