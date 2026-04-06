@@ -20,6 +20,15 @@ def download_audio(tiktok_url: str, tmp_dir: str) -> tuple[str, float]:
         }],
         "quiet": True,
         "no_warnings": True,
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": "https://www.tiktok.com/",
+        },
+        "extractor_args": {"tiktok": {"api_hostname": ["api16-normal-c-useast1a.tiktokv.com"]}},
+        "socket_timeout": 30,
+        "retries": 3,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -49,7 +58,8 @@ def transcribe_tiktok(tiktok_url: str, tmp_dir: str, openai_api_key: str) -> dic
         client = OpenAI(api_key=openai_api_key)
         text = transcribe_audio(filepath, client=client)
     finally:
-        os.remove(filepath)
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
     return {
         "text": text,
