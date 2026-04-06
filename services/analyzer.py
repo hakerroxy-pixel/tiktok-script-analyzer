@@ -1,5 +1,5 @@
 import json
-from anthropic import Anthropic
+from openai import OpenAI
 
 
 def build_analysis_prompt(transcript: str) -> str:
@@ -41,20 +41,20 @@ Responde SOLO con un JSON válido (sin markdown, sin ```), con esta estructura e
 IMPORTANTE: Evalúa la viralidad del 1 al 10, donde 10 es máximo potencial viral."""
 
 
-def analyze_script(transcript: str, client: Anthropic = None, api_key: str = None) -> dict:
-    """Analyze a TikTok script using Claude. Returns parsed analysis dict."""
+def analyze_script(transcript: str, client: OpenAI = None, api_key: str = None) -> dict:
+    """Analyze a TikTok script using GPT-4o. Returns parsed analysis dict."""
     if client is None:
-        client = Anthropic(api_key=api_key)
+        client = OpenAI(api_key=api_key)
 
     prompt = build_analysis_prompt(transcript)
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+    response = client.chat.completions.create(
+        model="gpt-4o",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw_text = response.content[0].text.strip()
+    raw_text = response.choices[0].message.content.strip()
 
     # Strip markdown code fences if present
     if raw_text.startswith("```"):

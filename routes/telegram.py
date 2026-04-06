@@ -12,8 +12,13 @@ _flask_app = None
 
 
 def _get_base_url():
+    import os
+    public_url = os.getenv("PUBLIC_URL")
+    if public_url:
+        return public_url.rstrip("/")
     local_ip = Config.get_local_ip()
-    return f"http://{local_ip}:5060"
+    port = os.getenv("PORT", "5080")
+    return f"http://{local_ip}:{port}"
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,7 +86,7 @@ async def adapt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             original_transcript=transcription.text,
             analysis_summary=analysis_summary,
             product_or_topic=product,
-            api_key=Config.ANTHROPIC_API_KEY,
+            api_key=Config.OPENAI_API_KEY,
         )
 
         adaptation = Adaptation(
@@ -126,7 +131,7 @@ async def handle_tiktok_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             analysis_data = analyze_script(
                 transcript=result["text"],
-                api_key=Config.ANTHROPIC_API_KEY,
+                api_key=Config.OPENAI_API_KEY,
             )
 
             author_match = re.search(r"tiktok\.com/@([^/]+)", url)
@@ -184,6 +189,10 @@ def start_telegram_bot(flask_app):
         return
 
     def run_bot():
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         app = Application.builder().token(token).build()
         app.add_handler(CommandHandler("start", start_command))
         app.add_handler(CommandHandler("history", history_command))

@@ -106,13 +106,11 @@
     <!-- Adapt Button -->
     <div class="bg-dark-800 rounded-lg p-6">
         <h2 class="text-lg font-bold text-purple-400 mb-3">Adaptar Guion</h2>
-        <form hx-post="/api/adapt/{{ analysis.id }}" hx-target="#adaptation-result" hx-swap="innerHTML"
-              hx-headers='{"Content-Type": "application/json"}'
-              hx-ext="json-enc">
+        <form id="adapt-form" onsubmit="submitAdapt(event, {{ analysis.id }})">
             <div class="flex gap-3">
-                <input type="text" name="product_or_topic" placeholder="Ej: Creatina Monohidrato, Psychotic..."
+                <input type="text" id="adapt-topic" placeholder="Ej: Creatina Monohidrato, Psychotic..."
                        class="flex-1 bg-dark-900 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none">
-                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium">
+                <button type="submit" id="adapt-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium">
                     Adaptar
                 </button>
             </div>
@@ -125,5 +123,46 @@
 function copyText(elementId) {
     const text = document.getElementById(elementId).innerText;
     navigator.clipboard.writeText(text);
+}
+
+async function submitAdapt(e, analysisId) {
+    e.preventDefault();
+    const topic = document.getElementById('adapt-topic').value.trim();
+    if (!topic) return;
+
+    const btn = document.getElementById('adapt-btn');
+    const result = document.getElementById('adaptation-result');
+
+    btn.disabled = true;
+    btn.textContent = 'Adaptando...';
+    result.innerHTML = '<p class="text-gray-400">Generando guion adaptado...</p>';
+
+    try {
+        const resp = await fetch(`/api/adapt/${analysisId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({product_or_topic: topic})
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.error || 'Error al adaptar');
+        }
+
+        const data = await resp.json();
+        result.innerHTML = `
+            <div class="bg-dark-700 rounded-lg p-4 border border-purple-800">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-bold text-purple-300">Adaptado para: ${data.product_or_topic}</h3>
+                    <button onclick="copyText('adapted-script-${data.adaptation_id}')" class="text-xs text-gray-400 hover:text-white px-2 py-1 border border-gray-600 rounded">Copiar</button>
+                </div>
+                <p id="adapted-script-${data.adaptation_id}" class="text-gray-300 whitespace-pre-wrap">${data.adapted_script}</p>
+            </div>`;
+    } catch (err) {
+        result.innerHTML = `<div class="bg-red-900/50 border border-red-500 rounded-lg p-4 text-red-300">${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Adaptar';
+    }
 }
 </script>

@@ -1,4 +1,4 @@
-from anthropic import Anthropic
+from openai import OpenAI
 
 
 def build_adaptation_prompt(original_transcript: str, analysis_summary: str, product_or_topic: str) -> str:
@@ -29,19 +29,19 @@ def adapt_script(
     original_transcript: str,
     analysis_summary: str,
     product_or_topic: str,
-    client: Anthropic = None,
+    client: OpenAI = None,
     api_key: str = None,
 ) -> str:
-    """Adapt a viral script to a specific product/topic using Claude. Returns adapted script text."""
+    """Adapt a viral script to a specific product/topic using GPT-4o. Returns adapted script text."""
     if client is None:
-        client = Anthropic(api_key=api_key)
+        client = OpenAI(api_key=api_key)
 
     prompt = build_adaptation_prompt(original_transcript, analysis_summary, product_or_topic)
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+    response = client.chat.completions.create(
+        model="gpt-4o",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    return response.content[0].text.strip()
+    return response.choices[0].message.content.strip()

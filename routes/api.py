@@ -21,18 +21,27 @@ def api_transcribe():
     if not url:
         return jsonify({"error": "URL is required"}), 400
 
-    # Transcribe
-    result = transcribe_tiktok(
-        tiktok_url=url,
-        tmp_dir=current_app.config["TMP_DIR"],
-        openai_api_key=current_app.config["OPENAI_API_KEY"],
-    )
+    # Clean URL: remove query params
+    url = url.split("?")[0]
 
-    # Analyze
-    analysis_data = analyze_script(
-        transcript=result["text"],
-        api_key=current_app.config["ANTHROPIC_API_KEY"],
-    )
+    try:
+        # Transcribe
+        result = transcribe_tiktok(
+            tiktok_url=url,
+            tmp_dir=current_app.config["TMP_DIR"],
+            openai_api_key=current_app.config["OPENAI_API_KEY"],
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error al transcribir: {str(e)}"}), 500
+
+    try:
+        # Analyze
+        analysis_data = analyze_script(
+            transcript=result["text"],
+            api_key=current_app.config["OPENAI_API_KEY"],
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error al analizar: {str(e)}"}), 500
 
     # Save to DB
     video = Video(tiktok_url=url, author=extract_tiktok_author(url))
@@ -79,12 +88,15 @@ def api_adapt(analysis_id):
 
     analysis_summary = f"Hook: {analysis.hook_type}, Score: {analysis.hook_score}/10, Viralidad: {analysis.virality_score}/10"
 
-    adapted = adapt_script(
-        original_transcript=transcription.text,
-        analysis_summary=analysis_summary,
-        product_or_topic=product_or_topic,
-        api_key=current_app.config["ANTHROPIC_API_KEY"],
-    )
+    try:
+        adapted = adapt_script(
+            original_transcript=transcription.text,
+            analysis_summary=analysis_summary,
+            product_or_topic=product_or_topic,
+            api_key=current_app.config["OPENAI_API_KEY"],
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error al adaptar: {str(e)}"}), 500
 
     adaptation = Adaptation(
         analysis_id=analysis.id,
