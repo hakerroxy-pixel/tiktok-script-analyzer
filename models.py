@@ -47,4 +47,27 @@ class Adaptation(db.Model):
     analysis_id = db.Column(db.Integer, db.ForeignKey("analyses.id"), nullable=False)
     product_or_topic = db.Column(db.Text, nullable=False)
     adapted_script = db.Column(db.Text, nullable=False)
+    version_number = db.Column(db.Integer, default=1)
+    hook_style = db.Column(db.Text)
+    is_favorite = db.Column(db.Boolean, default=False)
+    current_script = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    chat_messages = db.relationship("ChatMessage", backref="adaptation", cascade="all,delete")
+
+
+class CrossAnalysis(db.Model):
+    __tablename__ = "cross_analyses"
+    id = db.Column(db.Integer, primary_key=True)
+    video_ids = db.Column(db.Text, nullable=False)
+    result_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class ChatMessage(db.Model):
+    __tablename__ = "chat_messages"
+    id = db.Column(db.Integer, primary_key=True)
+    adaptation_id = db.Column(db.Integer, db.ForeignKey("adaptations.id"), nullable=False)
+    role = db.Column(db.Text, nullable=False)
+    content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
