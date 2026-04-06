@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 # Will be set by start_telegram_bot()
 _flask_app = None
 
+# Track which users are in chat mode: {user_id: adaptation_id}
+_chat_sessions = {}
+
 
 def _get_base_url():
     import os
@@ -30,7 +33,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "- Puntuación de viralidad\n\n"
         "Comandos:\n"
         "/history — Últimos 5 análisis\n"
-        "/adapt <id> <producto> — Adaptar un guion"
+        "/adapt <id> <producto> — Adaptar un guion\n"
+        "/cross <ids o urls> — Análisis cruzado de varios videos\n"
+        "/chat <adaptation_id> — Modo chat para refinar un guion\n"
+        "/exit — Salir del modo chat"
     )
 
 
@@ -104,8 +110,208 @@ async def adapt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Guion adaptado para: {product}\n\n{adapted}")
 
 
+async def cross_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    if not args:
+        await update.message.reply_text("Uso: /cross <id1> <id2> [url ...]\nEj: /cross 1 2 3\nEj: /cross 1 https://tiktok.com/...")
+        return
+
+    try:
+        with _flask_app.app_context():
+            from models import Analysis, Video, Transcription, CrossAnalysis, db
+            from services.transcriber import transcribe_tiktok
+            from services.analyzer import analyze_script
+            from services.cross_analyzer import cross_analyze
+            import json
+
+            video_ids = []
+            tiktok_pattern = r"https?://(www\.|vm\.)?tiktok\.com/\S+"
+
+            for arg in args:
+                if re.match(tiktok_pattern, arg):
+                    await update.message.reply_text(f"Procesando URL: {arg}")
+                    result = transcribe_tiktok(
+                        tiktok_url=arg,
+                        tmp_dir=Config.TMP_DIR,
+                        openai_api_key=Config.OPENAI_API_KEY,
+                    )
+                    analysis_data = analyze_script(
+                        transcript=result["text"],
+                        api_key=Config.OPENAI_API_KEY,
+                    )
+                    author_match = re.search(r"tiktok\.com/@([^/]+)", arg)
+                    author = f"@{author_match.group(1)}" if author_match else None
+
+                    video = Video(tiktok_url=arg, author=author)
+                    db.session.add(video)
+                    db.session.commit()
+
+                    t = Transcription(video_id=video.id, text=result["text"], duration_seconds=result["duration_seconds"])
+                    a = Analysis(
+                        video_id=video.id,
+                        hook_text=analysis_data["hook"]["text"],
+                        hook_type=analysis_data["hook"]["type"],
+                        hook_score=analysis_data["hook"]["score"],
+                        structure=json.dumps(analysis_data["structure"], ensure_ascii=False),
+                        virality_score=analysis_data["virality_score"]["score"],
+                        persuasion_elements=json.dumps(analysis_data["persuasion_elements"], ensure_ascii=False),
+                        full_analysis_json=json.dumps(analysis_data, ensure_ascii=False),
+                    )
+                    db.session.add_all([t, a])
+                    db.session.commit()
+                    video_ids.append(video.id)
+                else:
+                    try:
+                        video_ids.append(int(arg))
+                    except ValueError:
+                        await update.message.reply_text(f"Argumento no válido: {arg}")
+                        return
+
+            transcripts = []
+            analyses = []
+            for vid in video_ids:
+                video = Video.query.get(vid)
+                if not video or not video.transcription or not video.analysis:
+                    continue
+                transcripts.append(video.transcription.text)
+                try:
+                    analyses.append(json.loads(video.analysis.full_analysis_json))
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+            if len(analyses) < 2:
+                await update.message.reply_text("Se necesitan al menos 2 videos con análisis.")
+                return
+
+            await update.message.reply_text("Analizando patrones cruzados...")
+
+            result = cross_analyze(
+                transcripts=transcripts,
+                analyses=analyses,
+                api_key=Config.OPENAI_API_KEY,
+            )
+
+            ca = CrossAnalysis(
+                video_ids=json.dumps(video_ids),
+                result_json=json.dumps(result, ensure_ascii=False),
+            )
+            db.session.add(ca)
+            db.session.commit()
+
+        base_url = _get_base_url()
+        winning = result.get("winning_formula", "No se pudo determinar.")
+        if isinstance(winning, dict):
+            winning = json.dumps(winning, ensure_ascii=False, indent=2)
+
+        msg = (
+            f"Análisis cruzado completado ({len(analyses)} videos)\n\n"
+            f"Fórmula ganadora:\n{winning}\n\n"
+            f"Ver completo: {base_url}/cross/{ca.id}"
+        )
+        if len(msg) > 4000:
+            msg = msg[:4000] + "..."
+        await update.message.reply_text(msg)
+
+    except Exception as e:
+        logger.error(f"Error in cross_command: {e}")
+        await update.message.reply_text(f"Error: {str(e)}")
+
+
+async def chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    if not args:
+        await update.message.reply_text("Uso: /chat <adaptation_id>\nEj: /chat 5")
+        return
+
+    try:
+        adaptation_id = int(args[0])
+    except ValueError:
+        await update.message.reply_text("El ID debe ser un número.")
+        return
+
+    with _flask_app.app_context():
+        from models import Adaptation
+        adaptation = Adaptation.query.get(adaptation_id)
+        if not adaptation:
+            await update.message.reply_text(f"No se encontró adaptación con ID {adaptation_id}.")
+            return
+
+    user_id = update.effective_user.id
+    _chat_sessions[user_id] = adaptation_id
+    await update.message.reply_text(
+        f"Modo chat activado para adaptación #{adaptation_id}.\n"
+        "Mándame mensajes para refinar el guion.\n"
+        "Usa /exit para salir del modo chat."
+    )
+
+
+async def exit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id in _chat_sessions:
+        del _chat_sessions[user_id]
+        await update.message.reply_text("Modo chat desactivado.")
+    else:
+        await update.message.reply_text("No estás en modo chat.")
+
+
 async def handle_tiktok_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     text = update.message.text.strip()
+
+    # Check chat mode first
+    if user_id in _chat_sessions:
+        adaptation_id = _chat_sessions[user_id]
+        try:
+            with _flask_app.app_context():
+                from models import Adaptation, ChatMessage, db
+                from services.chat import chat_refine
+
+                adaptation = Adaptation.query.get(adaptation_id)
+                if not adaptation:
+                    del _chat_sessions[user_id]
+                    await update.message.reply_text("Adaptación no encontrada. Modo chat desactivado.")
+                    return
+
+                analysis = adaptation.analysis
+                video = analysis.video
+                transcription = video.transcription
+
+                analysis_summary = f"Hook: {analysis.hook_type}, Score: {analysis.hook_score}/10, Viralidad: {analysis.virality_score}/10"
+
+                chat_history = [
+                    {"role": m.role, "content": m.content}
+                    for m in ChatMessage.query.filter_by(adaptation_id=adaptation_id)
+                        .order_by(ChatMessage.created_at).all()
+                ]
+
+                current_script = adaptation.current_script or adaptation.adapted_script
+
+                refined = chat_refine(
+                    original_transcript=transcription.text,
+                    analysis_summary=analysis_summary,
+                    current_script=current_script,
+                    chat_history=chat_history,
+                    user_message=text,
+                    api_key=Config.OPENAI_API_KEY,
+                )
+
+                user_msg = ChatMessage(adaptation_id=adaptation_id, role="user", content=text)
+                assistant_msg = ChatMessage(adaptation_id=adaptation_id, role="assistant", content=refined)
+                db.session.add_all([user_msg, assistant_msg])
+
+                adaptation.current_script = refined
+                db.session.commit()
+
+            reply = refined
+            if len(reply) > 3500:
+                reply = reply[:3500] + "...\n\n(Ver completo en la web)"
+            await update.message.reply_text(f"Guion actualizado:\n\n{reply}")
+
+        except Exception as e:
+            logger.error(f"Error in chat mode: {e}")
+            await update.message.reply_text(f"Error: {str(e)}")
+        return
+
     tiktok_pattern = r"https?://(www\.|vm\.)?tiktok\.com/\S+"
     match = re.search(tiktok_pattern, text)
 
@@ -198,6 +404,9 @@ def start_telegram_bot(flask_app):
             app.add_handler(CommandHandler("start", start_command))
             app.add_handler(CommandHandler("history", history_command))
             app.add_handler(CommandHandler("adapt", adapt_command))
+            app.add_handler(CommandHandler("cross", cross_command))
+            app.add_handler(CommandHandler("chat", chat_command))
+            app.add_handler(CommandHandler("exit", exit_command))
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_tiktok_url))
 
             logger.info("Telegram bot started (polling)")
