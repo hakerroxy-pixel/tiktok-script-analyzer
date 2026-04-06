@@ -4,16 +4,16 @@ from openai import OpenAI
 
 # Product knowledge base — real info about supplements
 PRODUCT_INFO = {
-    "creatina": "Creatina monohidrato. Aumenta fuerza, potencia y rendimiento en entrenamientos de alta intensidad. Mejora la recuperación muscular. El suplemento más estudiado científicamente. Dosis: 5g/día. Retiene agua intracelular (no subcutánea). Ideal para fuerza, hipertrofia y deportes explosivos.",
-    "preentreno": "Pre-entreno / Preentreno. Aumenta energía, enfoque mental y rendimiento durante el entrenamiento. Contiene cafeína, beta-alanina (hormigueo), citrulina (bombeo muscular). Se toma 20-30 min antes de entrenar. Efecto: energía explosiva, mejor conexión mente-músculo.",
-    "psychotic": "Psychotic de Insane Labz. Pre-entreno de alta estimulación. Contiene cafeína, beta-alanina, creatina, AMPiberry. Conocido por su potencia extrema. Efecto: energía intensa, enfoque láser. Para usuarios avanzados que buscan el máximo rendimiento.",
-    "proteina": "Proteína en polvo (whey protein). Ayuda a la recuperación y crecimiento muscular post-entrenamiento. 20-30g de proteína por servicio. Se toma después de entrenar o como snack proteico. Sabores variados. Ideal para completar requerimiento proteico diario.",
-    "mk677": "MK-677 (Ibutamoren). Secretagogo de hormona de crecimiento. Aumenta GH y IGF-1 naturalmente. Beneficios: mejor sueño, recuperación muscular, aumento de apetito, piel más saludable. No es un esteroide. Ciclos de 8-12 semanas.",
-    "citrulina": "L-Citrulina / Citrulina Malato. Precursor del óxido nítrico. Mejora el flujo sanguíneo y el bombeo muscular. Reduce fatiga durante el entrenamiento. Dosis: 6-8g antes de entrenar. Efecto: venas más marcadas, mayor resistencia.",
-    "omega 3": "Omega 3 (EPA/DHA). Ácidos grasos esenciales. Antiinflamatorio natural. Beneficios: salud cardiovascular, articulaciones, cerebro, recuperación muscular. Dosis: 2-3g/día. Reduce dolor articular en deportistas.",
-    "bcaa": "BCAAs (aminoácidos de cadena ramificada). Leucina, isoleucina, valina. Reducen fatiga durante el entrenamiento. Ayudan a preservar masa muscular en déficit calórico. Se toman durante o después del entrenamiento.",
-    "quemador": "Quemador de grasa / Termogénico. Acelera el metabolismo. Contiene cafeína, extracto de té verde, L-carnitina. Aumenta la quema calórica. Se usa junto a dieta y ejercicio. No es mágico — complementa el déficit calórico.",
-    "glutamina": "L-Glutamina. Aminoácido más abundante en el cuerpo. Mejora recuperación muscular y salud intestinal. Fortalece el sistema inmune. Dosis: 5-10g/día. Ideal en periodos de entrenamiento intenso.",
+    "creatina": "Creatina monohidrato. Aumenta fuerza, potencia y rendimiento en entrenamientos de alta intensidad. Mejora la recuperación muscular. El suplemento más estudiado científicamente. Dosis: 5g/día. Se puede tomar a cualquier hora, no importa el timing. Fase de carga opcional (20g/día por 5 días). Retiene agua intracelular (no hincha). Se mezcla con agua o jugo. Ideal para fuerza, hipertrofia y deportes explosivos. Beneficios reales: más repeticiones, más fuerza, mejor recuperación entre series.",
+    "preentreno": "Pre-entreno / Preentreno. Aumenta energía, enfoque mental y rendimiento durante el entrenamiento. Ingredientes comunes: cafeína (150-300mg), beta-alanina (causa hormigueo en la piel, es normal), citrulina (bombeo muscular). Se toma 20-30 min antes de entrenar con agua. NO tomar después de las 6pm porque contiene cafeína. Efecto: energía explosiva, mejor conexión mente-músculo, más resistencia.",
+    "psychotic": "Psychotic de Insane Labz. Pre-entreno de alta estimulación. Contiene cafeína, beta-alanina, creatina, AMPiberry. Conocido por su potencia extrema — media cucharada es suficiente para principiantes. Efecto: energía intensa que dura 2-3 horas, enfoque láser, bombeo. Para usuarios avanzados. Sabores: Gummy Candy, Grape, Cotton Candy. NO mezclar con café.",
+    "proteina": "Proteína en polvo (whey protein). 20-30g de proteína por servicio. Se toma después de entrenar (ventana anabólica) o como snack entre comidas. Se mezcla con agua o leche. Ayuda a alcanzar el requerimiento proteico diario (1.6-2.2g/kg). Sabores variados. Tipos: concentrada (más económica), aislada (menos lactosa), hidrolizada (absorción rápida).",
+    "mk677": "MK-677 (Ibutamoren). Secretagogo de hormona de crecimiento oral. Aumenta GH y IGF-1 naturalmente. Beneficios reales: mejor calidad de sueño profundo, recuperación muscular acelerada, aumento de apetito, piel y cabello más saludables, mejor densidad ósea. Se toma 1 vez al día, preferible antes de dormir. No es un esteroide ni un SARM. Ciclos de 8-12 semanas. Efecto secundario principal: aumento de apetito y retención de agua temporal.",
+    "citrulina": "L-Citrulina / Citrulina Malato. Precursor del óxido nítrico. Se toma 20-30 min ANTES de entrenar con agua. Dosis: 6-8g. Efecto real: vasodilatación (venas más marcadas), mejor bombeo muscular, mayor flujo de sangre a los músculos, reduce fatiga y dolor muscular post-entreno, mejora resistencia. Funciona mejor en ayunas o con el estómago vacío. No tiene sabor. Se puede combinar con preentreno.",
+    "omega 3": "Omega 3 (EPA/DHA). Ácidos grasos esenciales que el cuerpo NO produce. Se toma con comidas que contengan grasa para mejor absorción. Dosis: 2-3g/día. Beneficios reales: reduce inflamación, mejora salud cardiovascular, lubrica articulaciones, mejora función cerebral, ayuda a recuperación muscular. Para deportistas: reduce dolor articular y muscular post-entreno.",
+    "bcaa": "BCAAs (aminoácidos de cadena ramificada). Leucina, isoleucina, valina. Se toman DURANTE el entrenamiento mezclados con agua. Reducen fatiga durante sesiones largas. Preservan masa muscular en déficit calórico (dieta de corte). Dan sabor al agua del gym. Dosis: 5-10g durante el entreno.",
+    "quemador": "Quemador de grasa / Termogénico. Contiene cafeína, extracto de té verde, L-carnitina. Se toma en ayunas o 30 min antes de entrenar. Acelera metabolismo y aumenta quema calórica. IMPORTANTE: solo funciona SI estás en déficit calórico. No es mágico. Complementa dieta y ejercicio. No tomar después de las 4pm.",
+    "glutamina": "L-Glutamina. Aminoácido más abundante en el cuerpo. Se toma después de entrenar o antes de dormir. Dosis: 5-10g/día. Mejora recuperación muscular, fortalece sistema inmune, mejora salud intestinal. Ideal en periodos de entrenamiento intenso donde el cuerpo se desgasta más.",
 }
 
 
@@ -28,48 +28,58 @@ def get_product_context(product_or_topic: str) -> str:
     if matches:
         return "\n".join(matches)
 
-    # No exact match — return generic instruction
     return f"Investiga sobre '{product_or_topic}' y asegúrate de que todo lo que digas sobre este producto/tema sea 100% correcto y verificable. NO inventes beneficios ni propiedades que no tenga."
 
 
 def build_multi_version_prompt(original_transcript: str, analysis_summary: str, product_or_topic: str) -> str:
     product_context = get_product_context(product_or_topic)
 
-    return f"""Eres un experto en creación de contenido viral para redes sociales con más de 10 años de experiencia en fitness y suplementos deportivos. Conoces a fondo cada suplemento, sus beneficios REALES y sus limitaciones.
+    return f"""Eres un creador de contenido viral experto en fitness y suplementos deportivos.
 
-GUION ORIGINAL VIRAL (este video se hizo viral, analiza por qué):
+PASO 1 — ANALIZA EL VIDEO ORIGINAL:
+El siguiente guion se hizo viral. Tu trabajo es entender POR QUÉ funcionó:
 \"\"\"
 {original_transcript}
 \"\"\"
+Análisis: {analysis_summary}
 
-ANÁLISIS DE POR QUÉ FUNCIONA: {analysis_summary}
+Identifica SOLO la estructura y técnicas virales:
+- ¿Cómo atrapa la atención en los primeros 3 segundos?
+- ¿Qué formato usa? (lista numerada, problema-solución, mito vs realidad, tutorial, storytelling, etc.)
+- ¿Qué ritmo tiene? ¿Cómo mantiene la atención?
+- ¿Qué CTA usa al final?
 
-PRODUCTO/TEMA A ADAPTAR: {product_or_topic}
-
-INFORMACIÓN REAL DEL PRODUCTO:
+PASO 2 — CONOCE EL NUEVO PRODUCTO:
+Producto: {product_or_topic}
 {product_context}
 
-INSTRUCCIONES CRÍTICAS:
-1. PRIMERO entiende la ESTRUCTURA y TÉCNICAS que hacen viral al guion original (ritmo, transiciones, tensión, CTA, etc.)
-2. Luego adapta ESA ESTRUCTURA al producto indicado
-3. TODO lo que digas sobre el producto DEBE ser real y correcto. NO inventes beneficios que no tiene. Si el producto no hace algo, NO lo menciones.
-4. El guion debe sonar NATURAL, como si alguien lo dijera frente a cámara con convicción
-5. Usa la misma duración aproximada que el original
+PASO 3 — CREA 5 GUIONES NUEVOS:
+Usa la ESTRUCTURA y FORMATO del video original pero con CONTENIDO 100% NUEVO sobre {product_or_topic}.
 
-Genera 5 versiones. Cada versión debe:
-- Usar la MISMA estructura y técnicas de viralidad del original (parafrasear, NO copiar textualmente)
-- Tener un HOOK DIFERENTE — elige los 5 mejores hooks posibles para este producto (NO uses categorías fijas, simplemente crea los 5 hooks más potentes y virales que se te ocurran)
-- El cuerpo del guion debe decir lo mismo pero con palabras diferentes en cada versión
+⚠️ REGLA CRÍTICA: NO copies afirmaciones del video original y reemplaces el nombre del producto. Eso es lo que NUNCA debes hacer. Ejemplo de lo que está MAL:
+- Original dice "el omega 3 se absorbe 300% mejor con grasas" → NO digas "la citrulina se absorbe 300% mejor con carbohidratos"
+- Original dice "3 mejores horarios para tomar omega 3" → NO hagas "3 mejores horarios para tomar citrulina" con la misma lógica
+
+Lo que SÍ debes hacer:
+- Original usa formato "Si usas X y no ves resultados, es porque..." → USA ese mismo formato pero con información REAL de {product_or_topic}
+- Original da 3 tips numerados → TÚ da 3 tips numerados pero sobre {product_or_topic} con info correcta
+- Original usa un tono educativo → Mantén ese tono
+
+Cada versión debe:
+- Tener un HOOK DIFERENTE — los 5 hooks más potentes y virales posibles para {product_or_topic}
+- Usar info 100% REAL del producto (ver PASO 2)
+- Sonar natural, como hablando a cámara
+- Tener la misma duración aproximada que el original
 - Incluir indicaciones de cámara entre [corchetes]
 - Estar en español neutro
 
 Responde SOLO con un JSON array (sin markdown, sin ```):
 [
-  {{"version_number": 1, "hook_style": "descripción corta del tipo de hook usado", "script": "guion completo aquí"}},
-  {{"version_number": 2, "hook_style": "descripción corta del tipo de hook usado", "script": "guion completo aquí"}},
-  {{"version_number": 3, "hook_style": "descripción corta del tipo de hook usado", "script": "guion completo aquí"}},
-  {{"version_number": 4, "hook_style": "descripción corta del tipo de hook usado", "script": "guion completo aquí"}},
-  {{"version_number": 5, "hook_style": "descripción corta del tipo de hook usado", "script": "guion completo aquí"}}
+  {{"version_number": 1, "hook_style": "descripción del hook", "script": "guion completo"}},
+  {{"version_number": 2, "hook_style": "descripción del hook", "script": "guion completo"}},
+  {{"version_number": 3, "hook_style": "descripción del hook", "script": "guion completo"}},
+  {{"version_number": 4, "hook_style": "descripción del hook", "script": "guion completo"}},
+  {{"version_number": 5, "hook_style": "descripción del hook", "script": "guion completo"}}
 ]"""
 
 
