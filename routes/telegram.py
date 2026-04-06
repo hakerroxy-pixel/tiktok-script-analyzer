@@ -193,14 +193,24 @@ def start_telegram_bot(flask_app):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        app = Application.builder().token(token).build()
-        app.add_handler(CommandHandler("start", start_command))
-        app.add_handler(CommandHandler("history", history_command))
-        app.add_handler(CommandHandler("adapt", adapt_command))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_tiktok_url))
+        async def start_polling():
+            app = Application.builder().token(token).build()
+            app.add_handler(CommandHandler("start", start_command))
+            app.add_handler(CommandHandler("history", history_command))
+            app.add_handler(CommandHandler("adapt", adapt_command))
+            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_tiktok_url))
 
-        logger.info("Telegram bot started (polling)")
-        app.run_polling(drop_pending_updates=True)
+            logger.info("Telegram bot started (polling)")
+            await app.initialize()
+            await app.updater.start_polling(drop_pending_updates=True)
+            await app.start()
+
+            # Keep running
+            import signal
+            stop_event = asyncio.Event()
+            await stop_event.wait()
+
+        loop.run_until_complete(start_polling())
 
     thread = threading.Thread(target=run_bot, daemon=True)
     thread.start()
