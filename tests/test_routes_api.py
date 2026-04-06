@@ -38,10 +38,13 @@ def test_api_adapt(client, db):
     db.session.add_all([t, a])
     db.session.commit()
 
-    with patch("routes.api.adapt_script", return_value="Guion adaptado para Creatina"):
+    fake_versions = [
+        {"version_number": 1, "hook_style": "pregunta", "script": "Guion adaptado para Creatina"},
+    ]
+    with patch("routes.api.generate_versions", return_value=fake_versions):
         resp = client.post(f"/api/adapt/{a.id}", json={"product_or_topic": "Creatina"})
 
     assert resp.status_code == 200
     data = resp.get_json()
-    assert "Creatina" in data["adapted_script"]
-    assert data["adaptation_id"] is not None
+    assert len(data["versions"]) == 1
+    assert "Creatina" in data["versions"][0]["script"]
