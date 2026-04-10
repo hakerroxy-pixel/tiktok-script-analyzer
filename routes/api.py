@@ -383,6 +383,17 @@ def api_match_videos():
                     )
                     transcript = result.get("text", "").strip().lower()
                     if transcript:
+                        # Also analyze for hook
+                        try:
+                            hook_data = analyze_script(
+                                transcript=result.get("text", ""),
+                                groq_api_key=current_app.config.get("GROQ_API_KEY"),
+                                api_key=current_app.config.get("OPENAI_API_KEY"),
+                            )
+                            vid["_hook"] = hook_data.get("hook", {})
+                            vid["_virality"] = hook_data.get("virality_score", {})
+                        except Exception:
+                            pass
                         for g in guiones:
                             g_content = (g.get("content") or "").strip().lower()
                             if not g_content:
@@ -408,6 +419,11 @@ def api_match_videos():
                 "shares": vid.get("shares", 0),
                 "engagement_rate": vid.get("engagement_rate", 0),
                 "cover": vid.get("cover", ""),
+                "hook_type": vid.get("_hook", {}).get("type", ""),
+                "hook_score": vid.get("_hook", {}).get("score", 0),
+                "hook_text": vid.get("_hook", {}).get("text", ""),
+                "hook_explanation": vid.get("_hook", {}).get("explanation", ""),
+                "virality_score": vid.get("_virality", {}).get("score", 0),
             })
 
     matches.sort(key=lambda x: x["similarity"], reverse=True)
