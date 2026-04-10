@@ -5,16 +5,33 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _find_writable_dir(candidates):
+    for d in candidates:
+        try:
+            os.makedirs(d, exist_ok=True)
+            if os.access(d, os.W_OK):
+                return d
+        except Exception:
+            continue
+    return candidates[-1]
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-    # Use /data for Railway persistent volume, fallback to local instance/ dir
-    _DB_DIR = "/data" if os.path.isdir("/data") else os.path.join(os.path.dirname(__file__), "instance")
+
+    _DB_DIR = _find_writable_dir([
+        "/data",
+        "/opt/render/project/src/instance",
+        os.path.join(os.path.dirname(__file__), "instance"),
+    ])
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(_DB_DIR, 'tiktok_analyzer.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-    TMP_DIR = "/data/tmp" if os.path.isdir("/data") else os.path.join(os.path.dirname(__file__), "tmp")
+
+    TMP_DIR = _find_writable_dir(["/data/tmp", "/tmp", os.path.join(os.path.dirname(__file__), "tmp")])
 
     @staticmethod
     def get_local_ip():
