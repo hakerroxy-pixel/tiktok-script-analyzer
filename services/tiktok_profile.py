@@ -4,20 +4,20 @@ import yt_dlp
 
 
 def get_profile_videos(username: str, count: int = 30) -> dict:
-    """Get videos from a TikTok user profile. Tries multiple methods."""
+    """Get videos from a TikTok user profile."""
     username = username.strip().lstrip("@")
 
-    # Try tikwm first
-    try:
-        return _get_via_tikwm(username, count)
-    except Exception as e:
-        print(f"tikwm profile failed: {e}")
-
-    # Fallback: yt-dlp
+    # Use yt-dlp directly (tikwm blocks from servers)
     try:
         return _get_via_ytdlp(username, count)
     except Exception as e:
-        raise Exception(f"Could not fetch profile: {e}")
+        print(f"yt-dlp profile failed: {e}")
+
+    # Fallback: tikwm
+    try:
+        return _get_via_tikwm(username, count)
+    except Exception as e2:
+        raise Exception(f"Could not fetch profile: yt-dlp: {e}, tikwm: {e2}")
 
 
 def _get_via_tikwm(username: str, count: int) -> dict:
