@@ -28,6 +28,11 @@ def detail(video_id):
     return render_template("detail.html", video=video, analysis_data=analysis_data)
 
 
+@web_bp.route("/profile/<username>")
+def profile_page(username):
+    return render_template("profile.html", username=username)
+
+
 @web_bp.route("/cross-analysis")
 def cross_analysis():
     videos = Video.query.order_by(Video.created_at.desc()).limit(50).all()

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Perfil @{{ username }} - TikTok Script Analyzer{% endblock %}
+{% block content %}
+<div id="profileLoading" class="text-center py-12">
+    <div class="animate-spin inline-block w-8 h-8 border-4 border-purple-400 border-t-transparent rounded-full"></div>
+    <p class="text-gray-400 mt-4">Cargando perfil de @{{ username }}...</p>
+</div>
+
+<div id="profileContent" style="display:none">
+    <!-- Header -->
+    <div class="bg-dark-800 rounded-xl p-6 mb-6 border border-gray-700">
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center text-2xl font-bold">{{ username[0] | upper }}</div>
+            <div>
+                <h1 class="text-2xl font-bold" id="profileNickname">@{{ username }}</h1>
+                <p class="text-gray-400 text-sm" id="profileStats"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" id="profileKPIs"></div>
+
+    <!-- Top Video -->
+    <h2 class="text-lg font-bold mb-3">Videos (más virales primero)</h2>
+    <div id="profileVideos"></div>
+</div>
+
+<div id="profileError" style="display:none" class="bg-red-900/30 border border-red-700 rounded-xl p-6 text-center">
+    <p class="text-red-400" id="profileErrorMsg">Error</p>
+</div>
+
+<script>
+async function loadProfile() {
+    try {
+        const resp = await fetch('/api/profile', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: '{{ username }}'})
+        });
+        const data = await resp.json();
+
+        if (data.error) {
+            document.getElementById('profileLoading').style.display = 'none';
+            document.getElementById('profileError').style.display = 'block';
+            document.getElementById('profileErrorMsg').textContent = data.error;
+            return;
+        }
+
+        // Header
+        document.getElementById('profileNickname').textContent = data.nickname || '@{{ username }}';
+        document.getElementById('profileStats').textContent = `${data.video_count} videos · ${data.avg_engagement}% engagement promedio`;
+
+        // KPIs
+        const fmt = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : n;
+        document.getElementById('profileKPIs').innerHTML = `
+            <div class="bg-dark-800 rounded-lg p-4 text-center border border-gray-700">
+                <div class="text-2xl font-bold text-green-400">${fmt(data.total_views)}</div>
+                <div class="text-xs text-gray-500">Views totales</div>
+            </div>
+            <div class="bg-dark-800 rounded-lg p-4 text-center border border-gray-700">
+                <div class="text-2xl font-bold text-pink-400">${fmt(data.total_likes)}</div>
+                <div class="text-xs text-gray-500">Likes totales</div>
+            </div>
+            <div class="bg-dark-800 rounded-lg p-4 text-center border border-gray-700">
+                <div class="text-2xl font-bold text-blue-400">${fmt(data.total_comments)}</div>
+                <div class="text-xs text-gray-500">Comentarios</div>
+            </div>
+            <div class="bg-dark-800 rounded-lg p-4 text-center border border-gray-700">
+                <div class="text-2xl font-bold text-yellow-400">${fmt(data.total_shares)}</div>
+                <div class="text-xs text-gray-500">Shares</div>
+            </div>
+        `;
+
+        // Videos
+        document.getElementById('profileVideos').innerHTML = data.videos.map((v, i) => {
+            const viewsColor = v.views >= 100000 ? 'text-green-400' : v.views >= 10000 ? 'text-yellow-400' : 'text-gray-300';
+            const desc = v.description ? v.description.substring(0, 80) + '...' : 'Sin descripción';
+            return `
+            <div class="bg-dark-800 rounded-lg p-4 mb-3 border border-gray-700 flex gap-4">
+                ${v.cover ? `<img src="${v.cover}" class="w-16 h-24 rounded-lg object-cover flex-shrink-0" alt="">` : ''}
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm text-gray-300 truncate">${desc}</div>
+                    <div class="flex gap-4 mt-2 text-xs text-gray-400">
+                        <span class="${viewsColor} font-bold">${fmt(v.views)} views</span>
+                        <span>❤️ ${fmt(v.likes)}</span>
+                        <span>💬 ${fmt(v.comments)}</span>
+                        <span>🔄 ${fmt(v.shares)}</span>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">${v.engagement_rate}% eng · ${v.duration}s</div>
+                    <a href="${v.url}" target="_blank" class="text-xs text-purple-400 hover:text-purple-300 mt-1 inline-block">Ver en TikTok →</a>
+                </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('profileLoading').style.display = 'none';
+        document.getElementById('profileContent').style.display = 'block';
+
+    } catch(e) {
+        document.getElementById('profileLoading').style.display = 'none';
+        document.getElementById('profileError').style.display = 'block';
+        document.getElementById('profileErrorMsg').textContent = 'Error: ' + e.message;
+    }
+}
+
+loadProfile();
+</script>
+{% endblock %}
