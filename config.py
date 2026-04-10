@@ -21,7 +21,7 @@ class Config:
 
     _DB_DIR = _find_writable_dir([
         "/data",
-        "/opt/render/project/src/instance",
+        "/tmp",
         os.path.join(os.path.dirname(__file__), "instance"),
     ])
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(_DB_DIR, 'tiktok_analyzer.db')}"
