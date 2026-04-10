@@ -8,6 +8,7 @@ from services.multi_adapter import generate_versions
 from services.cross_analyzer import cross_analyze
 from services.chat import chat_refine
 from services.tiktok_metrics import get_video_metrics, calculate_engagement
+from services.tiktok_profile import get_profile_videos
 
 api_bp = Blueprint("api", __name__)
 
@@ -295,6 +296,20 @@ def api_metrics_bulk():
             results.append({"url": url.strip(), "error": str(e)})
 
     return jsonify(results)
+
+
+@api_bp.route("/profile", methods=["POST"])
+def api_profile():
+    """Get all videos from a TikTok profile with metrics."""
+    data = request.get_json() or {}
+    username = data.get("username", "").strip()
+    if not username:
+        return jsonify({"error": "username is required"}), 400
+    try:
+        result = get_profile_videos(username)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"Error: {str(e)}"}), 500
 
 
 @api_bp.route("/cross-analyze", methods=["POST"])
