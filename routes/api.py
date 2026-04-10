@@ -312,6 +312,112 @@ def api_profile():
         return jsonify({"error": f"Error: {str(e)}"}), 500
 
 
+@api_bp.route("/match-videos", methods=["POST"])
+def api_match_videos():
+    """Match TikTok videos with guiones by description similarity."""
+    from difflib import SequenceMatcher
+
+    data = request.get_json() or {}
+    username = data.get("username", "").strip()
+    guiones = data.get("guiones", [])
+
+    if not username:
+        return jsonify({"error": "username is required"}), 400
+    if not guiones:
+        return jsonify({"error": "guiones array is required"}), 400
+
+    # 1. Get profile videos
+    try:
+        profile = get_profile_videos(username)
+    except Exception as e:
+        return jsonify({"error": f"Error fetching profile: {str(e)}"}), 500
+
+    videos = profile.get("videos", [])[:10]  # Limit to last 10
+
+    matches = []
+
+    for vid in videos:
+        desc = (vid.get("description") or "").strip().lower()
+        best_match = None
+        best_similarity = 0
+
+        if desc and len(desc) > 10:
+            # Match by description vs guion content
+            for g in guiones:
+                g_content = (g.get("content") or "").strip().lower()
+                g_title = (g.get("title") or "").strip().lower()
+
+                if not g_content:
+                    continue
+
+                # Compare first 50 chars
+                sim1 = SequenceMatcher(None, desc[:50], g_content[:50]).ratio()
+
+                # Also compare full description with guion words
+                g_words = set(w for w in g_content.split() if len(w) > 4)
+                d_words = set(desc.split())
+                if g_words:
+                    word_overlap = len(g_words & d_words) / len(g_words)
+                else:
+                    word_overlap = 0
+
+                # Title match
+                title_sim = SequenceMatcher(None, desc[:50], g_title[:50]).ratio() if g_title else 0
+
+                similarity = max(sim1, word_overlap, title_sim)
+
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_match = g
+        else:
+            # Short/no description - try to transcribe
+            vid_url = vid.get("url", "")
+            if vid_url:
+                try:
+                    result = transcribe_tiktok(
+                        tiktok_url=vid_url,
+                        tmp_dir=current_app.config["TMP_DIR"],
+                        groq_api_key=current_app.config.get("GROQ_API_KEY"),
+                        openai_api_key=current_app.config.get("OPENAI_API_KEY"),
+                    )
+                    transcript = result.get("text", "").strip().lower()
+                    if transcript:
+                        for g in guiones:
+                            g_content = (g.get("content") or "").strip().lower()
+                            if not g_content:
+                                continue
+                            sim = SequenceMatcher(None, transcript[:50], g_content[:50]).ratio()
+                            if sim > best_similarity:
+                                best_similarity = sim
+                                best_match = g
+                except Exception as e:
+                    print(f"Transcription failed for {vid_url}: {e}")
+
+        if best_match and best_similarity > 0.3:
+            matches.append({
+                "video_id": vid.get("id", ""),
+                "video_url": vid.get("url", ""),
+                "video_description": vid.get("description", ""),
+                "guion_id": best_match.get("id", ""),
+                "guion_title": best_match.get("title", ""),
+                "similarity": round(best_similarity, 2),
+                "views": vid.get("views", 0),
+                "likes": vid.get("likes", 0),
+                "comments": vid.get("comments", 0),
+                "shares": vid.get("shares", 0),
+                "engagement_rate": vid.get("engagement_rate", 0),
+                "cover": vid.get("cover", ""),
+            })
+
+    matches.sort(key=lambda x: x["similarity"], reverse=True)
+
+    return jsonify({
+        "username": username,
+        "total_videos": len(videos),
+        "matches": matches,
+    })
+
+
 @api_bp.route("/cross-analyze", methods=["POST"])
 def api_cross_analyze():
     data = request.get_json() or {}
