@@ -11,6 +11,85 @@ from services.chat import chat_refine
 api_bp = Blueprint("api", __name__)
 
 
+@api_bp.route("/videos", methods=["GET"])
+def api_videos():
+    """List all analyzed videos (history)."""
+    videos = Video.query.order_by(Video.created_at.desc()).limit(100).all()
+    result = []
+    for v in videos:
+        item = {
+            "id": v.id,
+            "tiktok_url": v.tiktok_url,
+            "author": v.author,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+        }
+        if v.transcription:
+            item["transcription"] = {"text": v.transcription.text, "duration_seconds": v.transcription.duration_seconds}
+        if v.analysis:
+            item["analysis"] = {
+                "id": v.analysis.id,
+                "hook_text": v.analysis.hook_text,
+                "hook_type": v.analysis.hook_type,
+                "hook_score": v.analysis.hook_score,
+                "virality_score": v.analysis.virality_score,
+            }
+            try:
+                item["analysis"]["full"] = json.loads(v.analysis.full_analysis_json)
+            except (json.JSONDecodeError, TypeError):
+                pass
+            item["adaptations"] = [
+                {
+                    "id": ad.id,
+                    "product_or_topic": ad.product_or_topic,
+                    "version_number": ad.version_number,
+                    "hook_style": ad.hook_style,
+                    "script": ad.current_script or ad.adapted_script,
+                    "is_favorite": ad.is_favorite,
+                }
+                for ad in v.analysis.adaptations
+            ]
+        result.append(item)
+    return jsonify(result)
+
+
+@api_bp.route("/video/<int:video_id>", methods=["GET"])
+def api_video_detail(video_id):
+    """Get full detail of a single video."""
+    v = Video.query.get_or_404(video_id)
+    item = {
+        "id": v.id,
+        "tiktok_url": v.tiktok_url,
+        "author": v.author,
+        "created_at": v.created_at.isoformat() if v.created_at else None,
+    }
+    if v.transcription:
+        item["transcription"] = {"text": v.transcription.text, "duration_seconds": v.transcription.duration_seconds}
+    if v.analysis:
+        item["analysis"] = {
+            "id": v.analysis.id,
+            "hook_text": v.analysis.hook_text,
+            "hook_type": v.analysis.hook_type,
+            "hook_score": v.analysis.hook_score,
+            "virality_score": v.analysis.virality_score,
+        }
+        try:
+            item["analysis"]["full"] = json.loads(v.analysis.full_analysis_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+        item["adaptations"] = [
+            {
+                "id": ad.id,
+                "product_or_topic": ad.product_or_topic,
+                "version_number": ad.version_number,
+                "hook_style": ad.hook_style,
+                "script": ad.current_script or ad.adapted_script,
+                "is_favorite": ad.is_favorite,
+            }
+            for ad in v.analysis.adaptations
+        ]
+    return jsonify(item)
+
+
 def extract_tiktok_author(url: str) -> str:
     match = re.search(r"tiktok\.com/@([^/]+)", url)
     return f"@{match.group(1)}" if match else None
