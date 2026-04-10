@@ -418,6 +418,36 @@ def api_match_videos():
     })
 
 
+@api_bp.route("/comments", methods=["POST"])
+def api_comments():
+    """Get comments from a TikTok video."""
+    from services.tiktok_comments import get_video_comments
+    data = request.get_json() or {}
+    url = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "url is required"}), 400
+    try:
+        result = get_video_comments(url)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/followers", methods=["POST"])
+def api_followers():
+    """Get follower count for a TikTok user."""
+    from services.tiktok_profile import get_follower_count
+    data = request.get_json() or {}
+    username = data.get("username", "").strip()
+    if not username:
+        return jsonify({"error": "username is required"}), 400
+    try:
+        result = get_follower_count(username)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @api_bp.route("/cross-analyze", methods=["POST"])
 def api_cross_analyze():
     data = request.get_json() or {}

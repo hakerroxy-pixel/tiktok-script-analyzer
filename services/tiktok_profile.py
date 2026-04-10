@@ -113,6 +113,46 @@ def _get_via_ytdlp(username: str, count: int) -> dict:
     }
 
 
+def get_follower_count(username: str) -> dict:
+    """Get current follower count for a TikTok user."""
+    username = username.strip().lstrip("@")
+    try:
+        resp = httpx.post(
+            "https://www.tikwm.com/api/user/info",
+            data={"unique_id": username},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 0:
+            raise Exception(f"tikwm: {data.get('msg')}")
+        user_data = data.get("data", {}).get("user", {})
+        stats = data.get("data", {}).get("stats", {})
+        return {
+            "username": username,
+            "nickname": user_data.get("nickname", username),
+            "followers": stats.get("followerCount", 0),
+            "following": stats.get("followingCount", 0),
+            "likes": stats.get("heartCount", 0),
+            "videos": stats.get("videoCount", 0),
+            "avatar": user_data.get("avatarThumb", ""),
+        }
+    except Exception:
+        # Fallback yt-dlp
+        with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
+            info = ydl.extract_info(f"https://www.tiktok.com/@{username}", download=False)
+        return {
+            "username": username,
+            "nickname": info.get("uploader", username),
+            "followers": info.get("channel_follower_count", 0),
+            "following": 0,
+            "likes": 0,
+            "videos": info.get("playlist_count", 0),
+            "avatar": info.get("thumbnails", [{}])[0].get("url", "") if info.get("thumbnails") else "",
+        }
+
+
 def _parse_tikwm_videos(username, videos_raw):
     author_data = videos_raw[0].get("author", {}) if videos_raw else {}
     videos = []
