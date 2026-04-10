@@ -174,7 +174,8 @@ def api_adapt(analysis_id):
             original_transcript=transcription.text,
             analysis_summary=analysis_summary,
             product_or_topic=product_or_topic,
-            api_key=current_app.config["OPENAI_API_KEY"],
+            api_key=current_app.config.get("OPENAI_API_KEY"),
+            groq_api_key=current_app.config.get("GROQ_API_KEY"),
         )
     except Exception as e:
         return jsonify({"error": f"Error al generar versiones: {str(e)}"}), 500

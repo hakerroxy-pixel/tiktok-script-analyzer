@@ -5,7 +5,7 @@ from openai import OpenAI
 def extract_viral_structure(original_transcript: str, analysis_summary: str, client: OpenAI) -> str:
     """Step 1: Extract ONLY the viral structure/format from the original video."""
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=getattr(client, '_model', 'gpt-4o'),
         max_tokens=800,
         messages=[{"role": "user", "content": f"""Analiza este guion viral y extrae SOLO su estructura y técnicas. NO menciones el producto ni el tema del video.
 
@@ -28,7 +28,7 @@ Responde con:
 def research_product(product_or_topic: str, client: OpenAI) -> str:
     """Step 2: Deep research the product like an expert would."""
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=getattr(client, '_model', 'gpt-4o'),
         max_tokens=1000,
         messages=[{"role": "user", "content": f"""Eres un experto en suplementos deportivos y fitness con conocimiento profundo basado en evidencia científica.
 
@@ -90,10 +90,20 @@ def generate_versions(
     product_or_topic: str,
     client: OpenAI = None,
     api_key: str = None,
+    groq_api_key: str = None,
 ) -> list[dict]:
-    """Generate 5 adapted script versions. Three-step process: extract structure, research product, create."""
-    if client is None:
+    """Generate 5 adapted script versions. Uses Groq first (free), OpenAI fallback."""
+    if groq_api_key:
+        try:
+            client = OpenAI(api_key=groq_api_key, base_url="https://api.groq.com/openai/v1")
+            # Test with Groq model
+            client._model = "llama-3.3-70b-versatile"
+        except Exception:
+            pass
+    if client is None and api_key:
         client = OpenAI(api_key=api_key)
+    if client is None:
+        raise Exception("No API key for generation")
 
     # Step 1: Extract viral structure (no product mentioned)
     viral_structure = extract_viral_structure(original_transcript, analysis_summary, client)
@@ -105,7 +115,7 @@ def generate_versions(
     prompt = build_creation_prompt(viral_structure, product_or_topic, product_research)
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=getattr(client, '_model', 'gpt-4o'),
         max_tokens=6000,
         messages=[{"role": "user", "content": prompt}],
     )
