@@ -93,8 +93,21 @@ def download_audio(tiktok_url: str, tmp_dir: str) -> tuple[str, float]:
         raise Exception(f"No se pudo descargar el video. yt-dlp y tikwm fallaron: {e}")
 
 
-def transcribe_audio(filepath: str, client: OpenAI = None) -> str:
-    """Transcribe audio file using Whisper API. Returns text."""
+def transcribe_audio_groq(filepath: str, api_key: str) -> str:
+    """Transcribe with Groq Whisper (FREE)."""
+    client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+    with open(filepath, "rb") as audio_file:
+        response = client.audio.transcriptions.create(
+            model="whisper-large-v3",
+            file=audio_file,
+            language="es",
+        )
+    return response.text
+
+
+def transcribe_audio_openai(filepath: str, api_key: str) -> str:
+    """Transcribe with OpenAI Whisper (paid fallback)."""
+    client = OpenAI(api_key=api_key)
     with open(filepath, "rb") as audio_file:
         response = client.audio.transcriptions.create(
             model="whisper-1",
@@ -104,18 +117,25 @@ def transcribe_audio(filepath: str, client: OpenAI = None) -> str:
     return response.text
 
 
-def transcribe_tiktok(tiktok_url: str, tmp_dir: str, openai_api_key: str) -> dict:
-    """Full flow: download audio, transcribe, cleanup. Returns {text, duration_seconds}."""
+def transcribe_tiktok(tiktok_url: str, tmp_dir: str, openai_api_key: str = None, groq_api_key: str = None) -> dict:
+    """Full flow: download audio, transcribe, cleanup. Groq first (free), OpenAI fallback."""
     filepath, duration = download_audio(tiktok_url, tmp_dir)
 
     try:
-        client = OpenAI(api_key=openai_api_key)
-        text = transcribe_audio(filepath, client=client)
+        # Try Groq first (FREE)
+        if groq_api_key:
+            try:
+                text = transcribe_audio_groq(filepath, groq_api_key)
+                return {"text": text, "duration_seconds": duration}
+            except Exception as e:
+                print(f"Groq failed: {e}")
+
+        # Fallback to OpenAI
+        if openai_api_key:
+            text = transcribe_audio_openai(filepath, openai_api_key)
+            return {"text": text, "duration_seconds": duration}
+
+        raise Exception("No API key (set GROQ_API_KEY or OPENAI_API_KEY)")
     finally:
         if os.path.exists(filepath):
             os.remove(filepath)
-
-    return {
-        "text": text,
-        "duration_seconds": duration,
-    }

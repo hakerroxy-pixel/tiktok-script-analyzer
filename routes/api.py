@@ -109,7 +109,8 @@ def api_transcribe():
         result = transcribe_tiktok(
             tiktok_url=url,
             tmp_dir=current_app.config["TMP_DIR"],
-            openai_api_key=current_app.config["OPENAI_API_KEY"],
+            openai_api_key=current_app.config.get("OPENAI_API_KEY"),
+            groq_api_key=current_app.config.get("GROQ_API_KEY"),
         )
     except Exception as e:
         return jsonify({"error": f"Error al transcribir: {str(e)}"}), 500
@@ -117,7 +118,8 @@ def api_transcribe():
     try:
         analysis_data = analyze_script(
             transcript=result["text"],
-            api_key=current_app.config["OPENAI_API_KEY"],
+            api_key=current_app.config.get("OPENAI_API_KEY"),
+            groq_api_key=current_app.config.get("GROQ_API_KEY"),
         )
     except Exception as e:
         return jsonify({"error": f"Error al analizar: {str(e)}"}), 500

@@ -41,12 +41,33 @@ Responde SOLO con un JSON válido (sin markdown, sin ```), con esta estructura e
 IMPORTANTE: Evalúa la viralidad del 1 al 10, donde 10 es máximo potencial viral."""
 
 
-def analyze_script(transcript: str, client: OpenAI = None, api_key: str = None) -> dict:
-    """Analyze a TikTok script using GPT-4o. Returns parsed analysis dict."""
-    if client is None:
-        client = OpenAI(api_key=api_key)
-
+def analyze_script(transcript: str, client: OpenAI = None, api_key: str = None, groq_api_key: str = None) -> dict:
+    """Analyze a TikTok script. Groq first (free), OpenAI fallback."""
     prompt = build_analysis_prompt(transcript)
+
+    # Try Groq first (FREE)
+    if groq_api_key:
+        try:
+            groq_client = OpenAI(api_key=groq_api_key, base_url="https://api.groq.com/openai/v1")
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                max_tokens=2000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw_text = response.choices[0].message.content.strip()
+            if raw_text.startswith("```"):
+                raw_text = raw_text.split("\n", 1)[1]
+                if raw_text.endswith("```"):
+                    raw_text = raw_text[:-3]
+            return json.loads(raw_text)
+        except Exception as e:
+            print(f"Groq analysis failed: {e}")
+
+    # Fallback to OpenAI
+    if client is None and api_key:
+        client = OpenAI(api_key=api_key)
+    if client is None:
+        raise Exception("No API key for analysis")
 
     response = client.chat.completions.create(
         model="gpt-4o",
