@@ -7,6 +7,7 @@ from services.analyzer import analyze_script
 from services.multi_adapter import generate_versions
 from services.cross_analyzer import cross_analyze
 from services.chat import chat_refine
+from services.tiktok_metrics import get_video_metrics, calculate_engagement
 
 api_bp = Blueprint("api", __name__)
 
@@ -255,6 +256,43 @@ def api_chat(adaptation_id):
         "message_id": assistant_msg.id,
         "adaptation_id": adaptation_id,
     })
+
+
+@api_bp.route("/metrics", methods=["POST"])
+def api_metrics():
+    """Get TikTok video metrics (views, likes, comments, shares) from URL."""
+    data = request.get_json() or {}
+    url = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
+
+    try:
+        metrics = get_video_metrics(url)
+        metrics["engagement_rate"] = calculate_engagement(metrics)
+        return jsonify(metrics)
+    except Exception as e:
+        return jsonify({"error": f"Error getting metrics: {str(e)}"}), 500
+
+
+@api_bp.route("/metrics/bulk", methods=["POST"])
+def api_metrics_bulk():
+    """Get metrics for multiple TikTok URLs."""
+    data = request.get_json() or {}
+    urls = data.get("urls", [])
+    if not urls:
+        return jsonify({"error": "urls array is required"}), 400
+
+    results = []
+    for url in urls:
+        try:
+            metrics = get_video_metrics(url.strip())
+            metrics["engagement_rate"] = calculate_engagement(metrics)
+            metrics["url"] = url.strip()
+            results.append(metrics)
+        except Exception as e:
+            results.append({"url": url.strip(), "error": str(e)})
+
+    return jsonify(results)
 
 
 @api_bp.route("/cross-analyze", methods=["POST"])
